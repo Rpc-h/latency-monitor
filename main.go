@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -68,13 +67,6 @@ func setupEnv() {
 func main() {
 	setupEnv()
 
-	fmt.Println(viper.GetString("RPC_SERVER_ADDRESS"))
-	fmt.Println(viper.GetString("METRICS_ADDRESS"))
-	fmt.Println(viper.GetString("METRICS_PATH"))
-	fmt.Println(viper.GetString("METRICS_REQUEST_TIMEOUT"))
-	fmt.Println(viper.GetString("METRICS_RESET_TIMEOUT"))
-	fmt.Println(viper.GetString("RPC_SERVER_ADDRESS"))
-
 	client, err := web3.Dial(viper.GetString("RPC_SERVER_ADDRESS"))
 	if err != nil {
 		log.Panic(err)
@@ -88,7 +80,7 @@ func main() {
 	go func() {
 		for {
 			select {
-			case <-time.Tick(time.Duration(viper.GetInt("METRICS_RESET_TIMEOUT"))):
+			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_RESET_TIMEOUT"))):
 				atomic.StoreInt64(&minLatency, 0)
 				atomic.StoreInt64(&maxLatency, 0)
 
@@ -121,6 +113,8 @@ func main() {
 					maxLatency = latency
 				}
 
+				//TODO - calculate average latency here
+
 				minLatencyMetric.Set(float64(minLatency))
 				maxLatencyMetric.Set(float64(maxLatency))
 
@@ -128,7 +122,7 @@ func main() {
 			}()
 
 			select {
-			case <-time.Tick(time.Duration(viper.GetInt("METRICS_REQUEST_TIMEOUT"))):
+			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_TIMEOUT"))):
 				requestFailure408Metric.Inc()
 			case <-rpch.Channel:
 			}
