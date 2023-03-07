@@ -29,7 +29,7 @@ type RPCH struct {
 }
 
 func setupEnv() {
-	viper.SetEnvPrefix("RPCH_MONITOR")
+	viper.SetEnvPrefix("MONITOR")
 
 	var err error
 
