@@ -10,11 +10,16 @@ To run, simply execute:
 go run main.go
 ```
 
+## RPCh server
+
+You have to provide address for RPC server in `${MONITOR_RPC_SERVER_ADDRESS}`. The easiest way to have a local RPC server is to follow the guide here: https://access.rpch.net/#section-2 , go to "RPCH DOCKER CONNECTOR", click on "Download", and then execute the `docker run` command provided.
+
 ## Variables
 
 These are the variables and their default values:
 
 ```env
+
 MONITOR_RPC_SERVER_ADDRESS=http://localhost:8080/?exit-provider=https://primary.gnosis-chain.rpc.hoprtech.net
 MONITOR_METRICS_ADDRESS=localhost:1234
 MONITOR_METRICS_PATH=/metrics
