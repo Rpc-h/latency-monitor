@@ -1,4 +1,4 @@
-# monitor
+# latency-monitor
 
 This is a monitoring tool for collecting latency metrics for RPCh. It works by opening a new socket on `${MONITOR_METRICS_ADDRESS}${MONITOR_METRICS_PATH}` for Prometheus to scrape metrics from. Then it makes calls to `${MONITOR_RPC_SERVER_ADDRESS}` or timeouts after `${MONITOR_METRICS_REQUEST_TIMEOUT}` seconds, whichever comes first. The Prometheus metrics are reset every `${MONITOR_METRICS_RESET_TIMEOUT}` seconds.
 
