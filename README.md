@@ -19,9 +19,8 @@ You have to provide address for RPC server in `${MONITOR_RPC_SERVER_ADDRESS}`. T
 These are the variables and their default values:
 
 ```env
-
 MONITOR_RPC_SERVER_ADDRESS=http://localhost:8080/?exit-provider=https://primary.gnosis-chain.rpc.hoprtech.net
-MONITOR_METRICS_ADDRESS=localhost:1234
+MONITOR_METRICS_ADDRESS=0.0.0.0:1234
 MONITOR_METRICS_PATH=/metrics
 MONITOR_METRICS_REQUEST_TIMEOUT=5
 MONITOR_METRICS_RESET_TIMEOUT=30

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -43,7 +44,7 @@ func setupEnv() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	viper.SetDefault("METRICS_ADDRESS", "localhost:1234")
+	viper.SetDefault("METRICS_ADDRESS", "0.0.0.0:1234")
 
 	err = viper.BindEnv("METRICS_PATH")
 	if err != nil {
@@ -130,6 +131,8 @@ func main() {
 	}()
 
 	http.Handle(viper.GetString("METRICS_PATH"), promhttp.Handler())
+
+	fmt.Printf("Webserver listening on %s\n", viper.GetString("METRICS_ADDRESS"))
 
 	err = http.ListenAndServe(viper.GetString("METRICS_ADDRESS"), nil)
 	if err != nil {
