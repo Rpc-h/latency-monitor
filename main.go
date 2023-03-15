@@ -88,6 +88,7 @@ func main() {
 		for {
 			select {
 			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_RESET_TIMEOUT"))):
+				log.Printf("reset")
 				atomic.StoreInt64(&minLatency, 0)
 				atomic.StoreInt64(&maxLatency, 0)
 
@@ -110,10 +111,12 @@ func main() {
 		for {
 			select {
 			case <-tickerTimeout.C:
+				log.Printf("timeout")
 				requestFailure408Metric.Inc()
 			case <-tickerInterval.C:
 				latency, err := rpch.getRawLatency()
 				if err != nil {
+					log.Printf("failure")
 					requestFailure400Metric.Inc()
 
 					return
@@ -133,6 +136,8 @@ func main() {
 
 				minLatencyMetric.Set(float64(minLatency))
 				maxLatencyMetric.Set(float64(maxLatency))
+
+				log.Printf("success")
 
 				//Reset the timout ticker
 				tickerTimeout.Reset(timeout)
