@@ -25,8 +25,7 @@ var requestFailure400Metric = promauto.NewGauge(prometheus.GaugeOpts{Namespace: 
 var requestFailure408Metric = promauto.NewGauge(prometheus.GaugeOpts{Namespace: "rpch", Subsystem: "requests", Name: "408"})
 
 type RPCH struct {
-	Client  web3.Client
-	Channel chan bool
+	Client web3.Client
 }
 
 func setupEnv() {
@@ -56,13 +55,13 @@ func setupEnv() {
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
-	viper.SetDefault("METRICS_REQUEST_INTERVAL", 5)
+	viper.SetDefault("METRICS_REQUEST_INTERVAL", 1)
 
 	err = viper.BindEnv("METRICS_REQUEST_TIMEOUT")
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
-	viper.SetDefault("METRICS_REQUEST_TIMEOUT", 5)
+	viper.SetDefault("METRICS_REQUEST_TIMEOUT", 3)
 
 	err = viper.BindEnv("METRICS_RESET_TIMEOUT")
 	if err != nil {
