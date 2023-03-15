@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -12,6 +10,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
 
@@ -36,46 +36,53 @@ func setupEnv() {
 
 	err = viper.BindEnv("RPC_SERVER_ADDRESS")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
 	}
 	viper.SetDefault("RPC_SERVER_ADDRESS", "http://localhost:8080/?exit-provider=https://primary.gnosis-chain.rpc.hoprtech.net")
 
 	err = viper.BindEnv("METRICS_ADDRESS")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
 	}
 	viper.SetDefault("METRICS_ADDRESS", "0.0.0.0:1234")
 
 	err = viper.BindEnv("METRICS_PATH")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
 	}
 	viper.SetDefault("METRICS_PATH", "/metrics")
 
-	_ = viper.BindEnv("METRICS_REQUEST_TIMEOUT")
+	err = viper.BindEnv("METRICS_REQUEST_INTERVAL")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
+	}
+	viper.SetDefault("METRICS_REQUEST_INTERVAL", 5)
+
+	err = viper.BindEnv("METRICS_REQUEST_TIMEOUT")
+	if err != nil {
+		log.Fatal().Msg(err.Error())
 	}
 	viper.SetDefault("METRICS_REQUEST_TIMEOUT", 5)
 
 	err = viper.BindEnv("METRICS_RESET_TIMEOUT")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
 	}
 	viper.SetDefault("METRICS_RESET_TIMEOUT", 30)
 }
 
 func main() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
 	setupEnv()
 
 	client, err := web3.Dial(viper.GetString("RPC_SERVER_ADDRESS"))
 	if err != nil {
-		log.Panic(err)
+		log.Fatal().Msg(err.Error())
 	}
 
 	rpch := &RPCH{
-		Client:  client,
-		Channel: make(chan bool),
+		Client: client,
 	}
 
 	go func() {
@@ -94,9 +101,18 @@ func main() {
 		}
 	}()
 
+	timeout := time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_TIMEOUT"))
+	tickerTimeout := time.NewTicker(timeout)
+
+	interval := time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL"))
+	tickerInterval := time.NewTicker(interval)
+
 	go func() {
 		for {
-			go func() {
+			select {
+			case <-tickerTimeout.C:
+				requestFailure408Metric.Inc()
+			case <-tickerInterval.C:
 				latency, err := rpch.getRawLatency()
 				if err != nil {
 					requestFailure400Metric.Inc()
@@ -119,24 +135,19 @@ func main() {
 				minLatencyMetric.Set(float64(minLatency))
 				maxLatencyMetric.Set(float64(maxLatency))
 
-				rpch.Channel <- true
-			}()
-
-			select {
-			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_TIMEOUT"))):
-				requestFailure408Metric.Inc()
-			case <-rpch.Channel:
+				//Reset the timout ticker
+				tickerTimeout.Reset(timeout)
 			}
 		}
 	}()
 
 	http.Handle(viper.GetString("METRICS_PATH"), promhttp.Handler())
 
-	fmt.Printf("Webserver listening on %s\n", viper.GetString("METRICS_ADDRESS"))
+	log.Printf("Webserver listening on %s", viper.GetString("METRICS_ADDRESS"))
 
 	err = http.ListenAndServe(viper.GetString("METRICS_ADDRESS"), nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
 	}
 }
 
