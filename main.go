@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	"github.com/gochain/web3"
@@ -15,14 +14,22 @@ import (
 	"github.com/spf13/viper"
 )
 
-var minLatency int64
-var maxLatency int64
-
-var minLatencyMetric = promauto.NewGauge(prometheus.GaugeOpts{Namespace: "rpch", Subsystem: "latency", Name: "min"})
-var maxLatencyMetric = promauto.NewGauge(prometheus.GaugeOpts{Namespace: "rpch", Subsystem: "latency", Name: "max"})
-var requestSuccessMetric = promauto.NewGauge(prometheus.GaugeOpts{Namespace: "rpch", Subsystem: "requests", Name: "200"})
-var requestFailure400Metric = promauto.NewGauge(prometheus.GaugeOpts{Namespace: "rpch", Subsystem: "requests", Name: "400"})
-var requestFailure408Metric = promauto.NewGauge(prometheus.GaugeOpts{Namespace: "rpch", Subsystem: "requests", Name: "408"})
+var summary = promauto.NewSummary(prometheus.SummaryOpts{
+	Namespace: "rpch",
+	Name:      "latencies",
+	Objectives: map[float64]float64{
+		0.1:  0,
+		0.2:  0,
+		0.3:  0,
+		0.4:  0,
+		0.5:  0,
+		0.6:  0,
+		0.7:  0,
+		0.8:  0,
+		0.9:  0,
+		0.99: 0,
+	},
+})
 
 type RPCH struct {
 	Client web3.Client
@@ -95,69 +102,17 @@ func main() {
 	go func() {
 		for {
 			select {
-			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_RESET_TIMEOUT"))):
-				log.Debug().Msg("reset")
+			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL"))):
+				log.Debug().Msg("success")
 
-				atomic.StoreInt64(&minLatency, 0)
-				atomic.StoreInt64(&maxLatency, 0)
-
-				minLatencyMetric.Set(0)
-				maxLatencyMetric.Set(0)
-				requestSuccessMetric.Set(0)
-				requestFailure400Metric.Set(0)
-				requestFailure408Metric.Set(0)
-			}
-		}
-	}()
-
-	timeout := time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_TIMEOUT"))
-	tickerTimeout := time.NewTicker(timeout)
-
-	interval := time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL"))
-	tickerInterval := time.NewTicker(interval)
-
-	go func() {
-		for {
-			select {
-			case <-tickerTimeout.C:
-				log.Error().Msg("timeout")
-
-				requestFailure408Metric.Inc()
-
-				//Reset the interval ticker
-				tickerInterval.Reset(interval)
-			case <-tickerInterval.C:
 				latency, err := rpch.getRawLatency()
 				if err != nil {
 					log.Error().Msg(err.Error())
 
-					requestFailure400Metric.Inc()
-
-					//Reset the timout ticker
-					tickerTimeout.Reset(timeout)
-
 					continue
 				}
 
-				requestSuccessMetric.Inc()
-
-				if latency < minLatency || minLatency == 0 {
-					minLatency = latency
-				}
-
-				if latency > maxLatency {
-					maxLatency = latency
-				}
-
-				//TODO - calculate average latency here
-
-				minLatencyMetric.Set(float64(minLatency))
-				maxLatencyMetric.Set(float64(maxLatency))
-
-				log.Debug().Msg("success")
-
-				//Reset the timout ticker
-				tickerTimeout.Reset(timeout)
+				summary.Observe(latency)
 			}
 		}
 	}()
@@ -172,7 +127,7 @@ func main() {
 	}
 }
 
-func (rpch *RPCH) getRawLatency() (int64, error) {
+func (rpch *RPCH) getRawLatency() (float64, error) {
 	now := time.Now()
 
 	_, err := rpch.Client.GetBlockByNumber(context.Background(), nil, false)
@@ -180,5 +135,5 @@ func (rpch *RPCH) getRawLatency() (int64, error) {
 		return 0, err
 	}
 
-	return time.Since(now).Milliseconds(), nil
+	return time.Since(now).Seconds(), nil
 }
