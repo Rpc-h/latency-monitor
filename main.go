@@ -73,18 +73,6 @@ func setup() {
 		log.Fatal().Msg(err.Error())
 	}
 	viper.SetDefault("METRICS_REQUEST_INTERVAL", 1)
-
-	err = viper.BindEnv("METRICS_REQUEST_TIMEOUT")
-	if err != nil {
-		log.Fatal().Msg(err.Error())
-	}
-	viper.SetDefault("METRICS_REQUEST_TIMEOUT", 3)
-
-	err = viper.BindEnv("METRICS_RESET_TIMEOUT")
-	if err != nil {
-		log.Fatal().Msg(err.Error())
-	}
-	viper.SetDefault("METRICS_RESET_TIMEOUT", 30)
 }
 
 func main() {
@@ -103,14 +91,14 @@ func main() {
 		for {
 			select {
 			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL"))):
-				log.Debug().Msg("success")
-
 				latency, err := rpch.getRawLatency()
 				if err != nil {
 					log.Error().Msg(err.Error())
 
 					continue
 				}
+
+				log.Debug().Msg("success")
 
 				summary.Observe(latency)
 			}
