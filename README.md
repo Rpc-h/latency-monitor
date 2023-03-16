@@ -1,6 +1,6 @@
 # latency-monitor
 
-This is a monitoring tool for collecting latency metrics for RPCh. It works by opening a new socket on `${MONITOR_METRICS_ADDRESS}${MONITOR_METRICS_PATH}` for Prometheus to scrape metrics from. Then it makes calls to `${MONITOR_RPC_SERVER_ADDRESS}` or timeouts after `${MONITOR_METRICS_REQUEST_TIMEOUT}` seconds, whichever comes first. The Prometheus metrics are reset every `${MONITOR_METRICS_RESET_TIMEOUT}` seconds.
+This is a monitoring tool for collecting latency metrics for RPCh. It works by opening a new socket on `${MONITOR_METRICS_ADDRESS}${MONITOR_METRICS_PATH}` for Prometheus to scrape metrics from. Then it makes calls to `${MONITOR_RPC_SERVER_ADDRESS}` every `${MONITOR_METRICS_REQUEST_INTERVAL}` seconds or timeouts after `${MONITOR_METRICS_REQUEST_TIMEOUT}` seconds, whichever comes first. The Prometheus metrics are reset every `${MONITOR_METRICS_RESET_TIMEOUT}` seconds. The default logging level is `${MONITOR_LOG_LEVEL}` and can range from -1 (trace) up to 5 (panic), logging can be disabled with 7 (https://github.com/rs/zerolog#leveled-logging).
 
 ## Running
 
@@ -27,6 +27,7 @@ MONITOR_METRICS_PATH=/metrics
 MONITOR_METRICS_REQUEST_INTERVAL=1
 MONITOR_METRICS_REQUEST_TIMEOUT=3
 MONITOR_METRICS_RESET_TIMEOUT=30
+MONITOR_LOG_LEVEL=1
 ```
 
 ## Metrics

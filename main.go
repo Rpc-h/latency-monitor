@@ -28,10 +28,27 @@ type RPCH struct {
 	Client web3.Client
 }
 
-func setupEnv() {
+func setup() {
 	viper.SetEnvPrefix("MONITOR")
 
 	var err error
+
+	err = viper.BindEnv("LOG_LEVEL")
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	viper.SetDefault("LOG_LEVEL", zerolog.InfoLevel)
+
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	//Cast interface to zerolog.Level type
+	level, ok := viper.Get("LOG_LEVEL").(zerolog.Level)
+	if !ok {
+		log.Fatal().Msg("invalid cast")
+	}
+
+	//Set global log level
+	zerolog.SetGlobalLevel(level)
 
 	err = viper.BindEnv("RPC_SERVER_ADDRESS")
 	if err != nil {
@@ -71,9 +88,7 @@ func setupEnv() {
 }
 
 func main() {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-
-	setupEnv()
+	setup()
 
 	client, err := web3.Dial(viper.GetString("RPC_SERVER_ADDRESS"))
 	if err != nil {
@@ -88,7 +103,8 @@ func main() {
 		for {
 			select {
 			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_RESET_TIMEOUT"))):
-				log.Printf("reset")
+				log.Debug().Msg("reset")
+
 				atomic.StoreInt64(&minLatency, 0)
 				atomic.StoreInt64(&maxLatency, 0)
 
@@ -111,15 +127,23 @@ func main() {
 		for {
 			select {
 			case <-tickerTimeout.C:
-				log.Printf("timeout")
+				log.Error().Msg("timeout")
+
 				requestFailure408Metric.Inc()
+
+				//Reset the interval ticker
+				tickerInterval.Reset(interval)
 			case <-tickerInterval.C:
 				latency, err := rpch.getRawLatency()
 				if err != nil {
-					log.Printf("failure")
+					log.Error().Msg(err.Error())
+
 					requestFailure400Metric.Inc()
 
-					return
+					//Reset the timout ticker
+					tickerTimeout.Reset(timeout)
+
+					continue
 				}
 
 				requestSuccessMetric.Inc()
@@ -137,7 +161,7 @@ func main() {
 				minLatencyMetric.Set(float64(minLatency))
 				maxLatencyMetric.Set(float64(maxLatency))
 
-				log.Printf("success")
+				log.Debug().Msg("success")
 
 				//Reset the timout ticker
 				tickerTimeout.Reset(timeout)
@@ -147,7 +171,7 @@ func main() {
 
 	http.Handle(viper.GetString("METRICS_PATH"), promhttp.Handler())
 
-	log.Printf("Webserver listening on %s", viper.GetString("METRICS_ADDRESS"))
+	log.Info().Msgf("Webserver listening on %s", viper.GetString("METRICS_ADDRESS"))
 
 	err = http.ListenAndServe(viper.GetString("METRICS_ADDRESS"), nil)
 	if err != nil {
