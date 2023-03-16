@@ -39,16 +39,9 @@ func setup() {
 	}
 	viper.SetDefault("LOG_LEVEL", zerolog.InfoLevel)
 
+	//Set time format and global log level
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-
-	//Cast interface to zerolog.Level type
-	level, ok := viper.Get("LOG_LEVEL").(zerolog.Level)
-	if !ok {
-		log.Fatal().Msg("invalid cast")
-	}
-
-	//Set global log level
-	zerolog.SetGlobalLevel(level)
+	zerolog.SetGlobalLevel(zerolog.Level(viper.GetInt("LOG_LEVEL")))
 
 	err = viper.BindEnv("RPC_SERVER_ADDRESS")
 	if err != nil {
