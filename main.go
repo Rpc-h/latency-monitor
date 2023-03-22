@@ -14,9 +14,22 @@ import (
 	"github.com/spf13/viper"
 )
 
-var summary = promauto.NewSummary(prometheus.SummaryOpts{
+var latenciesSuccess = promauto.NewSummary(prometheus.SummaryOpts{
 	Namespace: "rpch",
 	Name:      "latencies",
+	Subsystem: "success",
+	Objectives: map[float64]float64{
+		0.5:  0,
+		0.7:  0,
+		0.9:  0,
+		0.99: 0,
+	},
+})
+
+var latenciesFailure = promauto.NewSummary(prometheus.SummaryOpts{
+	Namespace: "rpch",
+	Name:      "latencies",
+	Subsystem: "failure",
 	Objectives: map[float64]float64{
 		0.5:  0,
 		0.7:  0,
@@ -89,12 +102,14 @@ func main() {
 				if err != nil {
 					log.Error().Msg(err.Error())
 
+					latenciesFailure.Observe(latency)
+
 					continue
 				}
 
 				log.Debug().Msg("success")
 
-				summary.Observe(latency)
+				latenciesSuccess.Observe(latency)
 			}
 		}
 	}()
@@ -113,9 +128,6 @@ func (rpch *RPCH) getRawLatency() (float64, error) {
 	now := time.Now()
 
 	_, err := rpch.Client.GetBlockByNumber(context.Background(), nil, false)
-	if err != nil {
-		return 0, err
-	}
 
-	return time.Since(now).Seconds(), nil
+	return time.Since(now).Seconds(), err
 }
