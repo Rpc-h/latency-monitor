@@ -79,7 +79,7 @@ func setup() {
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
-	viper.SetDefault("METRICS_REQUEST_INTERVAL", 1)
+	viper.SetDefault("METRICS_REQUEST_INTERVAL", 3)
 }
 
 func main() {
@@ -98,18 +98,20 @@ func main() {
 		for {
 			select {
 			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL"))):
-				latency, err := rpch.getRawLatency()
-				if err != nil {
-					log.Error().Msg(err.Error())
+				go func() {
+					latency, err := rpch.getRawLatency()
+					if err != nil {
+						log.Error().Msg(err.Error())
 
-					latenciesFailure.Observe(latency)
+						latenciesFailure.Observe(latency)
 
-					continue
-				}
+						return
+					}
 
-				log.Debug().Msg("success")
+					log.Debug().Msg("success")
 
-				latenciesSuccess.Observe(latency)
+					latenciesSuccess.Observe(latency)
+				}()
 			}
 		}
 	}()
