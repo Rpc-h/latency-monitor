@@ -16,8 +16,8 @@ import (
 
 var latenciesSuccess = promauto.NewSummary(prometheus.SummaryOpts{
 	Namespace: "rpch",
-	Name:      "latencies",
-	Subsystem: "success",
+	Subsystem: "latencies",
+	Name:      "success",
 	Objectives: map[float64]float64{
 		0.5:  0,
 		0.7:  0,
@@ -28,8 +28,8 @@ var latenciesSuccess = promauto.NewSummary(prometheus.SummaryOpts{
 
 var latenciesFailure = promauto.NewSummary(prometheus.SummaryOpts{
 	Namespace: "rpch",
-	Name:      "latencies",
-	Subsystem: "failure",
+	Subsystem: "latencies",
+	Name:      "failure",
 	Objectives: map[float64]float64{
 		0.5:  0,
 		0.7:  0,
