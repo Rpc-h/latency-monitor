@@ -24,7 +24,7 @@ These are the accepted environment variables and their default values:
 MONITOR_RPC_SERVER_ADDRESS=http://localhost:8080/?exit-provider=https://primary.gnosis-chain.rpc.hoprtech.net
 MONITOR_METRICS_ADDRESS=0.0.0.0:1234
 MONITOR_METRICS_PATH=/metrics
-MONITOR_METRICS_REQUEST_INTERVAL=1
+MONITOR_METRICS_REQUEST_INTERVAL=3
 MONITOR_LOG_LEVEL=1
 ```
 
@@ -33,14 +33,21 @@ MONITOR_LOG_LEVEL=1
 Besides the default metrics, the custom exposed metrics are:
 
 ```
-# HELP rpch_latencies
-# TYPE rpch_latencies summary
-rpch_latencies{quantile="0.5"} 0
-rpch_latencies{quantile="0.6"} 0
-rpch_latencies{quantile="0.7"} 0
-rpch_latencies{quantile="0.8"} 0
-rpch_latencies{quantile="0.9"} 0
-rpch_latencies{quantile="0.99"} 0
-rpch_latencies_sum 0
-rpch_latencies_count 0
+# HELP rpch_latencies_success
+# TYPE rpch_latencies_success summary
+rpch_latencies_success{quantile="0.5"} 0
+rpch_latencies_success{quantile="0.7"} 0
+rpch_latencies_success{quantile="0.9"} 0
+rpch_latencies_success{quantile="0.99"} 0
+rpch_latencies_success_sum 0
+rpch_latencies_success_count 0
+
+# HELP rpch_latencies_failure
+# TYPE rpch_latencies_failure summary
+rpch_latencies_failure{quantile="0.5"} 0
+rpch_latencies_failure{quantile="0.7"} 0
+rpch_latencies_failure{quantile="0.9"} 0
+rpch_latencies_failure{quantile="0.99"} 0
+rpch_latencies_failure_sum 0
+rpch_latencies_failure_count 0
 ```
