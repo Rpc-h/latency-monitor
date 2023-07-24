@@ -1,11 +1,14 @@
 package main
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"math/rand"
 	"net/http"
 	"time"
 
-	"github.com/gochain/web3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -37,10 +40,6 @@ var latenciesFailure = promauto.NewSummary(prometheus.SummaryOpts{
 		0.99: 0,
 	},
 })
-
-type RPCH struct {
-	Client web3.Client
-}
 
 func setup() {
 	viper.SetEnvPrefix("MONITOR")
@@ -85,21 +84,12 @@ func setup() {
 func main() {
 	setup()
 
-	client, err := web3.Dial(viper.GetString("RPC_SERVER_ADDRESS"))
-	if err != nil {
-		log.Fatal().Msg(err.Error())
-	}
-
-	rpch := &RPCH{
-		Client: client,
-	}
-
 	go func() {
 		for {
 			select {
 			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL"))):
 				go func() {
-					latency, err := rpch.getRawLatency()
+					latency, err := getRawLatency()
 					if err != nil {
 						log.Error().Msg(err.Error())
 
@@ -120,16 +110,52 @@ func main() {
 
 	log.Info().Msgf("Webserver listening on %s", viper.GetString("METRICS_ADDRESS"))
 
-	err = http.ListenAndServe(viper.GetString("METRICS_ADDRESS"), nil)
+	err := http.ListenAndServe(viper.GetString("METRICS_ADDRESS"), nil)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
 }
 
-func (rpch *RPCH) getRawLatency() (float64, error) {
+func getRawLatency() (float64, error) {
 	now := time.Now()
 
-	_, err := rpch.Client.GetBlockByNumber(context.Background(), nil, false)
+	body, err := json.Marshal(struct {
+		Jsonrpc string   `json:"jsonrpc"`
+		Method  string   `json:"method"`
+		Params  []string `json:"params"`
+		Id      string   `json:"id"`
+	}{
+		Jsonrpc: "2.0",
+		Method:  "eth_getBlockTransactionCountByNumber",
+		Params: []string{
+			"latest",
+		},
+		Id: fmt.Sprintf("%v", rand.Int()),
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	request, err := http.NewRequest(http.MethodPost, "https://primary.gnosis-chain.rpc.hoprtech.net", bytes.NewBuffer(body))
+	if err != nil {
+		return 0, err
+	}
+	request.Header.Set("Origin", "http://primary.goerli.rpc.hoprtech.net")
+
+	client := http.Client{}
+
+	response, err := client.Do(request)
+	if err != nil {
+		return 0, err
+	}
+
+	body, err = io.ReadAll(response.Body)
+	if err != nil {
+		return 0, err
+	}
+	defer response.Body.Close()
+
+	log.Debug().Msg(fmt.Sprintf("%s", body))
 
 	return time.Since(now).Seconds(), err
 }
