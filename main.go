@@ -98,7 +98,7 @@ func main() {
 						return
 					}
 
-					log.Debug().Msgf("Successful observation, latency: %v\n", latency)
+					log.Debug().Msgf("Successful observation, latency: %v", latency)
 
 					latenciesSuccess.Observe(latency)
 				}()
@@ -134,7 +134,7 @@ func getRawLatency() (float64, error) {
 		return 0, err
 	}
 
-	request, err := http.NewRequest(http.MethodPost, "https://primary.gnosis-chain.rpc.hoprtech.net", bytes.NewBuffer(body))
+	request, err := http.NewRequest(http.MethodPost, viper.GetString("RPC_SERVER_ADDRESS"), bytes.NewBuffer(body))
 	if err != nil {
 		return 0, err
 	}
