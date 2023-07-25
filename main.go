@@ -98,7 +98,7 @@ func main() {
 						return
 					}
 
-					log.Debug().Msg("success")
+					log.Debug().Msgf("Successful observation, latency: %v\n", latency)
 
 					latenciesSuccess.Observe(latency)
 				}()
@@ -117,8 +117,6 @@ func main() {
 }
 
 func getRawLatency() (float64, error) {
-	now := time.Now()
-
 	body, err := json.Marshal(struct {
 		Jsonrpc string   `json:"jsonrpc"`
 		Method  string   `json:"method"`
@@ -142,11 +140,14 @@ func getRawLatency() (float64, error) {
 	}
 
 	client := http.Client{}
+	now := time.Now()
 
 	response, err := client.Do(request)
 	if err != nil {
 		return 0, err
 	}
+
+	latency := time.Since(now).Seconds()
 
 	body, err = io.ReadAll(response.Body)
 	if err != nil {
@@ -156,5 +157,5 @@ func getRawLatency() (float64, error) {
 
 	log.Debug().Msg(fmt.Sprintf("%s", body))
 
-	return time.Since(now).Seconds(), err
+	return latency, err
 }
