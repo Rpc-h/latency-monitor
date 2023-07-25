@@ -140,7 +140,6 @@ func getRawLatency() (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	request.Header.Set("Origin", "http://primary.goerli.rpc.hoprtech.net")
 
 	client := http.Client{}
 
