@@ -48,7 +48,7 @@ func setup() {
 
 	err = viper.BindEnv("LOG_LEVEL")
 	if err != nil {
-		log.Fatal().Msg(err.Error())
+		log.Fatal().Err(err).Send()
 	}
 	viper.SetDefault("LOG_LEVEL", zerolog.InfoLevel)
 
@@ -58,25 +58,25 @@ func setup() {
 
 	err = viper.BindEnv("RPC_SERVER_ADDRESS")
 	if err != nil {
-		log.Fatal().Msg(err.Error())
+		log.Fatal().Err(err).Send()
 	}
 	viper.SetDefault("RPC_SERVER_ADDRESS", "http://localhost:8080/?exit-provider=https://primary.gnosis-chain.rpc.hoprtech.net")
 
 	err = viper.BindEnv("METRICS_ADDRESS")
 	if err != nil {
-		log.Fatal().Msg(err.Error())
+		log.Fatal().Err(err).Send()
 	}
 	viper.SetDefault("METRICS_ADDRESS", "0.0.0.0:1234")
 
 	err = viper.BindEnv("METRICS_PATH")
 	if err != nil {
-		log.Fatal().Msg(err.Error())
+		log.Fatal().Err(err).Send()
 	}
 	viper.SetDefault("METRICS_PATH", "/metrics")
 
 	err = viper.BindEnv("METRICS_REQUEST_INTERVAL")
 	if err != nil {
-		log.Fatal().Msg(err.Error())
+		log.Fatal().Err(err).Send()
 	}
 	viper.SetDefault("METRICS_REQUEST_INTERVAL", 3)
 }
@@ -84,25 +84,20 @@ func setup() {
 func main() {
 	setup()
 
+	client := http.Client{}
+
 	go func() {
-		for {
-			select {
-			case <-time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL"))):
-				go func() {
-					latency, err := getRawLatency()
-					if err != nil {
-						log.Error().Msg(err.Error())
+		for range time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL"))) {
+			latency, err := getRawLatency(&client)
+			if err != nil {
+				log.Err(err).Send()
+				latenciesFailure.Observe(latency)
 
-						latenciesFailure.Observe(latency)
-
-						return
-					}
-
-					log.Debug().Msgf("Successful observation, latency: %v", latency)
-
-					latenciesSuccess.Observe(latency)
-				}()
+				continue
 			}
+
+			log.Debug().Msgf("Successful observation, latency: %v", latency)
+			latenciesSuccess.Observe(latency)
 		}
 	}()
 
@@ -112,11 +107,11 @@ func main() {
 
 	err := http.ListenAndServe(viper.GetString("METRICS_ADDRESS"), nil)
 	if err != nil {
-		log.Fatal().Msg(err.Error())
+		log.Fatal().Err(err).Send()
 	}
 }
 
-func getRawLatency() (float64, error) {
+func getRawLatency(client *http.Client) (float64, error) {
 	body, err := json.Marshal(struct {
 		Jsonrpc string   `json:"jsonrpc"`
 		Method  string   `json:"method"`
@@ -139,13 +134,13 @@ func getRawLatency() (float64, error) {
 		return 0, err
 	}
 
-	client := http.Client{}
 	now := time.Now()
 
 	response, err := client.Do(request)
 	if err != nil {
 		return 0, err
 	}
+	defer response.Body.Close()
 
 	latency := time.Since(now).Seconds()
 
@@ -153,9 +148,12 @@ func getRawLatency() (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer response.Body.Close()
 
-	log.Debug().Msg(fmt.Sprintf("%s", body))
+	if response.StatusCode != http.StatusOK {
+		return latency, fmt.Errorf("%s", body)
+	}
 
-	return latency, err
+	log.Debug().Msgf("%s", body)
+
+	return latency, nil
 }
