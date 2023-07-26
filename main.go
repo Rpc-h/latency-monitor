@@ -78,7 +78,7 @@ func setup() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	viper.SetDefault("METRICS_REQUEST_INTERVAL", 3)
+	viper.SetDefault("METRICS_REQUEST_INTERVAL", 1)
 }
 
 func main() {
@@ -91,7 +91,11 @@ func main() {
 			latency, err := getRawLatency(&client)
 			if err != nil {
 				log.Err(err).Send()
-				latenciesFailure.Observe(latency)
+
+				//Should use predefined errors to check if the error is generated, e.g. by unsuccessful JSON unmarshal, etc.
+				if latency != 0 {
+					latenciesFailure.Observe(latency)
+				}
 
 				continue
 			}
@@ -112,7 +116,7 @@ func main() {
 }
 
 func getRawLatency(client *http.Client) (float64, error) {
-	body, err := json.Marshal(struct {
+	requestBody, err := json.Marshal(struct {
 		Jsonrpc string   `json:"jsonrpc"`
 		Method  string   `json:"method"`
 		Params  []string `json:"params"`
@@ -129,7 +133,7 @@ func getRawLatency(client *http.Client) (float64, error) {
 		return 0, err
 	}
 
-	request, err := http.NewRequest(http.MethodPost, viper.GetString("RPC_SERVER_ADDRESS"), bytes.NewBuffer(body))
+	request, err := http.NewRequest(http.MethodPost, viper.GetString("RPC_SERVER_ADDRESS"), bytes.NewBuffer(requestBody))
 	if err != nil {
 		return 0, err
 	}
@@ -144,16 +148,30 @@ func getRawLatency(client *http.Client) (float64, error) {
 
 	latency := time.Since(now).Seconds()
 
-	body, err = io.ReadAll(response.Body)
+	b, err := io.ReadAll(response.Body)
 	if err != nil {
 		return 0, err
 	}
 
-	if response.StatusCode != http.StatusOK {
-		return latency, fmt.Errorf("%s", body)
+	responseBody := struct {
+		Jsonrpc string `json:"jsonrpc"`
+		Result  string `json:"result"`
+		Error   struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+			Id      string `json:"id"`
+		} `json:"error"`
+		Id string `json:"id"`
+	}{}
+
+	err = json.Unmarshal(b, &responseBody)
+	if err != nil {
+		return 0, err
 	}
 
-	log.Debug().Msgf("%s", body)
+	if responseBody.Result == "" {
+		return latency, fmt.Errorf("code: %v, message: %s", responseBody.Error.Code, responseBody.Error.Message)
+	}
 
 	return latency, nil
 }
