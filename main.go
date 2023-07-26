@@ -169,7 +169,7 @@ func getRawLatency(client *http.Client) (float64, error) {
 		return 0, err
 	}
 
-	if responseBody.Result == "" {
+	if responseBody.Id == "null" {
 		return latency, fmt.Errorf("code: %v, message: %s", responseBody.Error.Code, responseBody.Error.Message)
 	}
 
