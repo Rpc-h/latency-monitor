@@ -154,14 +154,14 @@ func getRawLatency(client *http.Client) (float64, error) {
 	}
 
 	responseBody := struct {
-		Jsonrpc string `json:"jsonrpc"`
-		Result  string `json:"result"`
-		Error   struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-			Id      string `json:"id"`
+		Jsonrpc *string `json:"jsonrpc"`
+		Result  *string `json:"result"`
+		Error   *struct {
+			Code    *int    `json:"code"`
+			Message *string `json:"message"`
+			Id      *string `json:"id"`
 		} `json:"error"`
-		Id string `json:"id"`
+		Id *string `json:"id"`
 	}{}
 
 	err = json.Unmarshal(b, &responseBody)
@@ -169,8 +169,8 @@ func getRawLatency(client *http.Client) (float64, error) {
 		return 0, err
 	}
 
-	if responseBody.Id == "null" {
-		return latency, fmt.Errorf("code: %v, message: %s", responseBody.Error.Code, responseBody.Error.Message)
+	if responseBody.Error != nil {
+		return latency, fmt.Errorf("code: %v, message: %s", *responseBody.Error.Code, *responseBody.Error.Message)
 	}
 
 	return latency, nil
