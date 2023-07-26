@@ -78,7 +78,7 @@ func setup() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	viper.SetDefault("METRICS_REQUEST_INTERVAL", 1)
+	viper.SetDefault("METRICS_REQUEST_INTERVAL", 3)
 }
 
 func main() {
@@ -92,7 +92,7 @@ func main() {
 			if err != nil {
 				log.Err(err).Send()
 
-				//Should use predefined errors to check if the error is generated, e.g. by unsuccessful JSON unmarshal, etc.
+				//TODO - Should use predefined errors to check if the error is generated, e.g. by unsuccessful JSON unmarshal, etc.
 				if latency != 0 {
 					latenciesFailure.Observe(latency)
 				}
