@@ -148,29 +148,13 @@ func getRawLatency(client *http.Client) (float64, error) {
 
 	latency := time.Since(now).Seconds()
 
-	b, err := io.ReadAll(response.Body)
-	if err != nil {
-		return 0, err
-	}
+	if response.StatusCode != 200 {
+		b, err := io.ReadAll(response.Body)
+		if err != nil {
+			return 0, err
+		}
 
-	responseBody := struct {
-		Jsonrpc *string `json:"jsonrpc"`
-		Result  *string `json:"result"`
-		Error   *struct {
-			Code    *int    `json:"code"`
-			Message *string `json:"message"`
-			Id      *string `json:"id"`
-		} `json:"error"`
-		Id *string `json:"id"`
-	}{}
-
-	err = json.Unmarshal(b, &responseBody)
-	if err != nil {
-		return 0, err
-	}
-
-	if responseBody.Error != nil {
-		return latency, fmt.Errorf("code: %v, message: %s", *responseBody.Error.Code, *responseBody.Error.Message)
+		return latency, fmt.Errorf("%s", b)
 	}
 
 	return latency, nil
