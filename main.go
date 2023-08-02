@@ -78,7 +78,7 @@ func setup() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	viper.SetDefault("METRICS_REQUEST_INTERVAL", 3)
+	viper.SetDefault("METRICS_REQUEST_INTERVAL", 2)
 }
 
 func main() {
