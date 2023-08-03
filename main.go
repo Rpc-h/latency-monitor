@@ -78,7 +78,7 @@ func setup() {
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
-	viper.SetDefault("METRICS_REQUEST_INTERVAL", 3)
+	viper.SetDefault("METRICS_REQUEST_INTERVAL", 2)
 }
 
 func main() {
@@ -87,22 +87,25 @@ func main() {
 	client := http.Client{}
 
 	go func() {
-		for range time.Tick(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL"))) {
-			latency, err := getRawLatency(&client)
-			if err != nil {
-				log.Err(err).Send()
+		ticker := time.NewTicker(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL")))
+		for ; true; <-ticker.C {
+			go func() {
+				latency, err := getRawLatency(&client)
+				if err != nil {
+					log.Err(err).Send()
 
-				//TODO - Should use predefined errors to check if the error is generated, e.g. by unsuccessful JSON unmarshal, etc.
-				if latency != 0 {
-					latenciesFailure.Observe(latency)
+					//TODO - Should use predefined errors to check if the error is generated, e.g. by unsuccessful JSON unmarshal, etc.
+					if latency != 0 {
+						latenciesFailure.Observe(latency)
+					}
+					return
 				}
 
-				continue
-			}
-
-			log.Debug().Msgf("Successful observation, latency: %v", latency)
-			latenciesSuccess.Observe(latency)
+				log.Debug().Msgf("Successful observation, latency: %v", latency)
+				latenciesSuccess.Observe(latency)
+			}()
 		}
+		ticker.Stop()
 	}()
 
 	http.Handle(viper.GetString("METRICS_PATH"), promhttp.Handler())
