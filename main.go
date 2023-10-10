@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"time"
 
@@ -41,16 +40,39 @@ var latenciesFailure = promauto.NewSummary(prometheus.SummaryOpts{
 	},
 })
 
-func setup() {
-	viper.SetEnvPrefix("MONITOR")
+var latenciesSuccessZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
+	Namespace: "rpch",
+	Subsystem: "latencies",
+	Name:      "success-zerohop",
+	Objectives: map[float64]float64{
+		0.5:  0,
+		0.7:  0,
+		0.9:  0,
+		0.99: 0,
+	},
+})
 
+var latenciesFailureZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
+	Namespace: "rpch",
+	Subsystem: "latencies",
+	Name:      "failure-zerohop",
+	Objectives: map[float64]float64{
+		0.5:  0,
+		0.7:  0,
+		0.9:  0,
+		0.99: 0,
+	},
+})
+
+func setup() error {
 	var err error
+
+	viper.SetEnvPrefix("MONITOR")
 
 	err = viper.BindEnv("LOG_LEVEL")
 	if err != nil {
-		log.Fatal().Err(err).Send()
+		return err
 	}
-	viper.SetDefault("LOG_LEVEL", zerolog.InfoLevel)
 
 	//Set time format and global log level
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
@@ -58,52 +80,78 @@ func setup() {
 
 	err = viper.BindEnv("RPC_SERVER_ADDRESS")
 	if err != nil {
-		log.Fatal().Err(err).Send()
+		return err
 	}
-	viper.SetDefault("RPC_SERVER_ADDRESS", "http://localhost:8080/?exit-provider=https://primary.gnosis-chain.rpc.hoprtech.net")
+
+	err = viper.BindEnv("RPC_SERVER_ADDRESS_ZERO_HOP")
+	if err != nil {
+		return err
+	}
 
 	err = viper.BindEnv("METRICS_ADDRESS")
 	if err != nil {
-		log.Fatal().Err(err).Send()
+		return err
 	}
-	viper.SetDefault("METRICS_ADDRESS", "0.0.0.0:1234")
 
 	err = viper.BindEnv("METRICS_PATH")
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	viper.SetDefault("METRICS_PATH", "/metrics")
-
-	err = viper.BindEnv("METRICS_REQUEST_INTERVAL")
-	if err != nil {
-		log.Fatal().Err(err).Send()
-	}
-	viper.SetDefault("METRICS_REQUEST_INTERVAL", 2)
+	return err
 }
 
 func main() {
-	setup()
+	var err error
+	err = setup()
+	if err != nil {
+		log.Fatal().Err(err).Send()
+		return
+	}
 
+	started := time.Now().Unix()
 	client := http.Client{}
 
 	go func() {
-		ticker := time.NewTicker(time.Second * time.Duration(viper.GetInt("METRICS_REQUEST_INTERVAL")))
-		for ; true; <-ticker.C {
-			go func() {
-				latency, err := getRawLatency(&client)
-				if err != nil {
-					log.Err(err).Send()
+		ticker := time.NewTicker(time.Second * time.Duration(1))
+		for t := range ticker.C {
+			diff := t.Unix() - started
+			rem := diff % 2
 
-					//TODO - Should use predefined errors to check if the error is generated, e.g. by unsuccessful JSON unmarshal, etc.
-					if latency != 0 {
-						latenciesFailure.Observe(latency)
+			// alternative rpc server calls every other second
+			if rem == 0 {
+
+				// run default rpc
+				go func() {
+					server := viper.GetString("RPC_SERVER_ADDRESS")
+					latency, err := getRawLatency(&client, server, diff)
+					if err != nil {
+						log.Err(err).Send()
+						if latency != 0 {
+							latenciesFailure.Observe(latency)
+						}
+						return
 					}
-					return
-				}
 
-				log.Debug().Msgf("Successful observation, latency: %v", latency)
-				latenciesSuccess.Observe(latency)
-			}()
+					log.Debug().Msgf("Successful observation, latency: %v", latency)
+					latenciesSuccess.Observe(latency)
+				}()
+
+			} else {
+
+				// run zero hop rpc
+				go func() {
+					server := viper.GetString("RPC_SERVER_ADDRESS_ZERO_HOP")
+					latency, err := getRawLatency(&client, server, diff)
+					if err != nil {
+						log.Err(err).Send()
+						if latency != 0 {
+							latenciesFailureZeroHop.Observe(latency)
+						}
+						return
+					}
+
+					log.Debug().Msgf("Successful observation, latency: %v", latency)
+					latenciesSuccessZeroHop.Observe(latency)
+				}()
+
+			}
 		}
 		ticker.Stop()
 	}()
@@ -112,13 +160,13 @@ func main() {
 
 	log.Info().Msgf("Webserver listening on %s", viper.GetString("METRICS_ADDRESS"))
 
-	err := http.ListenAndServe(viper.GetString("METRICS_ADDRESS"), nil)
+	err = http.ListenAndServe(viper.GetString("METRICS_ADDRESS"), nil)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
 }
 
-func getRawLatency(client *http.Client) (float64, error) {
+func getRawLatency(client *http.Client, server string, id int64) (float64, error) {
 	requestBody, err := json.Marshal(struct {
 		Jsonrpc string   `json:"jsonrpc"`
 		Method  string   `json:"method"`
@@ -130,13 +178,13 @@ func getRawLatency(client *http.Client) (float64, error) {
 		Params: []string{
 			"latest",
 		},
-		Id: fmt.Sprintf("%v", rand.Int()),
+		Id: fmt.Sprintf("%v", id),
 	})
 	if err != nil {
 		return 0, err
 	}
 
-	request, err := http.NewRequest(http.MethodPost, viper.GetString("RPC_SERVER_ADDRESS"), bytes.NewBuffer(requestBody))
+	request, err := http.NewRequest(http.MethodPost, server, bytes.NewBuffer(requestBody))
 	if err != nil {
 		return 0, err
 	}
