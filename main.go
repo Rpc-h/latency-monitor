@@ -43,7 +43,7 @@ var latenciesFailure = promauto.NewSummary(prometheus.SummaryOpts{
 var latenciesSuccessZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
 	Namespace: "rpch",
 	Subsystem: "latencies",
-	Name:      "success-zerohop",
+	Name:      "success_zerohop",
 	Objectives: map[float64]float64{
 		0.5:  0,
 		0.7:  0,
@@ -55,7 +55,7 @@ var latenciesSuccessZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
 var latenciesFailureZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
 	Namespace: "rpch",
 	Subsystem: "latencies",
-	Name:      "failure-zerohop",
+	Name:      "failure_zerohop",
 	Objectives: map[float64]float64{
 		0.5:  0,
 		0.7:  0,
