@@ -3,3 +3,5 @@ main
 latency-monitor
 .env
 .direnv
+*service-account.json
+.envrc
