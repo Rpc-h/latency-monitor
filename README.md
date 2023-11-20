@@ -21,7 +21,7 @@ go run main.go
 These are the accepted environment variables and their default values:
 
 ```dotenv
-export LATENCY_MONITOR_RPC_SERVER_ZERO_HOPE_ADDRESS=http://localhost:45752/?provider=https://gnosis-provider.rpch.tech
+export LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_ADDRESS=http://localhost:45752/?provider=https://gnosis-provider.rpch.tech
 export LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS=http://localhost:45752/?provider=https://gnosis-provider.rpch.tech
 export LATENCY_MONITOR_METRICS_ADDRESS=0.0.0.0:80
 export LATENCY_MONITOR_METRICS_PATH=/metrics

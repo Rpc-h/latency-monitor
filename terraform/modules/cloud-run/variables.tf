@@ -23,11 +23,11 @@ variable "container_tag" {
 variable "rpc_server_one_hop_address" {
   description = "Rpc-h server address for one hop"
   type        = string
-  default     = "https://rpc-server-one-hop.rpch.tech"
+  default     = "https://rpc-server-one-hop.staging.rpch.tech/?provider=https://gnosis-provider.rpch.tech"
 }
 
 variable "rpc_server_zero_hop_address" {
   description = "Rpc-h server address for zero hop"
   type        = string
-  default     = "https://rpc-server-zero-hop.rpch.tech"
+  default     = "https://rpc-server-zero-hop.staging.rpch.tech/?provider=https://gnosis-provider.rpch.tech"
 }

@@ -111,9 +111,9 @@ func setup() error {
 		viper.Set("RPC_SERVER_ZERO_HOP_START", 1)
 	}
 
-	viper.BindEnv("RPC_SERVER_ZERO_HOPE_ADDRESS")
-	if !viper.IsSet("RPC_SERVER_ZERO_HOPE_ADDRESS") {
-		err = errors.New("Environment variable \"LATENCY_MONITOR_RPC_SERVER_ZERO_HOPE_ADDRESS\" is not set ")
+	viper.BindEnv("RPC_SERVER_ZERO_HOP_ADDRESS")
+	if !viper.IsSet("RPC_SERVER_ZERO_HOP_ADDRESS") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_ADDRESS\" is not set ")
 	}
 
 	return err
@@ -132,7 +132,7 @@ func main() {
 	log.Info().Msgf("Metrics listening on %s%s", viper.GetString("METRICS_ADDRESS"), viper.GetString("METRICS_PATH"))
 	go func() {
 		var interval = viper.GetInt32("REQUEST_INTERVAL_DURATION")
-		go startLatencyMonitor(viper.GetString("RPC_SERVER_ZERO_HOPE_ADDRESS"), interval, viper.GetInt64("RPC_SERVER_ZERO_HOP_START"), 0, latenciesSuccessZeroHop, latenciesFailureZeroHop)
+		go startLatencyMonitor(viper.GetString("RPC_SERVER_ZERO_HOP_ADDRESS"), interval, viper.GetInt64("RPC_SERVER_ZERO_HOP_START"), 0, latenciesSuccessZeroHop, latenciesFailureZeroHop)
 		go startLatencyMonitor(viper.GetString("RPC_SERVER_ONE_HOP_ADDRESS"), interval, viper.GetInt64("RPC_SERVER_ONE_HOP_START"), 1, latenciesSuccess, latenciesFailure)
 	}()
 
