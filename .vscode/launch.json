@@ -12,8 +12,7 @@
             "program": "main.go",
             "env": {
                 "LATENCY_MONITOR_RPC_SERVER_ZERO_HOPE_ADDRESS": "http://localhost:45750/?provider=https://gnosis-provider.rpch.tech",
-                "LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS": "http://localhost:45750/?provider=https://gnosis-provider.rpch.tech",
-                "LATENCY_MONITOR_REQUEST_INTERVAL_DURATION": "5"
+                "LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS": "http://localhost:45750/?provider=https://gnosis-provider.rpch.tech"
             }
         }
     ]
