@@ -1,21 +1,30 @@
-name: Main
+name: Build Docker
 
 on:
-  push:
-    branches: [main]
+  pull_request:
+    types:
+      - synchronize
+      - closed
 
 jobs:
   container-image:
-    name: Build and push container image
+    name: Build Docker
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v3
 
-      - name: Calculate environment variables
-        shell: sh
-        run: echo "SHORT_SHA=`git rev-parse --short HEAD`" >> $GITHUB_ENV
+      - name: Setup environment variables
+        id: setup
+        run: |
+          git_commit=`git rev-parse --short HEAD`
+          declare base_branch=${{ github.event.pull_request.base.ref }}
+          if [ "${base_branch}" == "master" ]; then
+            echo "docker_tags=latest,${git_commit}" >> $GITHUB_OUTPUT
+          else
+            echo "docker_tags=${git_commit}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Login to GCP
         id: gcloud
@@ -31,4 +40,4 @@ jobs:
           registry: ${{ secrets.GOOGLE_REGION }}-docker.pkg.dev
           username: ${{ steps.gcloud.outputs.username }}
           password: ${{ steps.gcloud.outputs.password }}
-          tags: "${{ env.SHORT_SHA }}"
+          tags: "${{ steps.setup.outputs.git_commit }}"

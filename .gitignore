@@ -5,3 +5,5 @@ latency-monitor
 .direnv
 *service-account.json
 .envrc
+terraform/.terraform/
+terraform/.terraform.lock.hcl
