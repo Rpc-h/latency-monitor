@@ -3,13 +3,12 @@ resource "google_project_service" "run" {
 }
 
 module "cloud-run" {
-  count           = length(var.google_regions)
-  source          = "./modules/cloud-run"
-  google_project  = var.google_project
-  google_region   = var.google_regions[count.index]
-  depends_on      = [ google_project_service.run ]
-  container_tag   = "0b20a4f"
+  source                   = "./modules/cloud-run"
+  google_project           = var.google_project
+  google_regions           = var.google_regions
+  rpc_server_client_tokens = var.rpc_server_client_tokens
+  environment              = var.environment
+  latency_container_tag    = "1d033450ff611e61f63ea655e595105f046a1067715a27562ef9090739991ddc"
+  rpc_server_container_tag = "9876d4d300e31a33ee5ef094c0f97eb489f6a034a2f5040361264ab25abb7f1b"
+  depends_on               = [google_project_service.run]
 }
-
-
-# https://cloud.google.com/compute/docs/regions-zones

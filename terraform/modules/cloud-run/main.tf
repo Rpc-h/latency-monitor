@@ -1,69 +1,31 @@
-resource "google_cloud_run_service" "default" {
-  name     = "cloudrun-srv"
-  location = var.google_region
-
-  template {
-    metadata {
-      annotations = {
-        "autoscaling.knative.dev/maxScale" = "1"
-      }
-      labels = {
-        "run.googleapis.com/startupProbeType" = "Custom"
-      }
-    }
-    spec {
-      timeout_seconds = 300
-      containers {
-        image = format("%s:%s", var.container_image, var.container_tag)
-        name  = "latency"
-        ports {
-          container_port = 80
-          name           = "http1" 
-        }
-        args = []
-        command = []
-        env {
-          name = "LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS"
-          value = var.rpc_server_one_hop_address
-        }
-        env {
-          name = "LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_ADDRESS"
-          value = var.rpc_server_zero_hop_address
-        }
-        resources {
-          requests = {}
-          limits = {
-            cpu = "200m"
-            memory = "128Mi"
-          }
-        }
-        liveness_probe {
-          timeout_seconds = 20
-          period_seconds = 120
-          failure_threshold = 5
-          http_get {
-            path = "/metrics"
-            port = 80
-          }
-        }
-
-        startup_probe {
-          initial_delay_seconds = 65
-          period_seconds = 60
-          failure_threshold = 2
-          timeout_seconds = 60
-          http_get {
-            path = "/metrics"
-            port = 80
-          }
-        }
-      }
-    }
-  }
-
-  traffic {
-    percent         = 100
-    latest_revision = true
-  }
+resource "google_service_account" "cloud_run" {
+  #Not inferred from the provider
+  project      = var.google_project
+  account_id   = "latency-monitor-${var.environment}"
+  display_name = "latency-monitor-${var.environment}"
 }
 
+resource "google_project_iam_binding" "cloud_run" {
+  members = ["serviceAccount:${google_service_account.cloud_run.email}"]
+  role    = "roles/secretmanager.secretAccessor"
+  #Not inferred from the provider
+  project = var.google_project
+}
+
+module "cloud-run-service" {
+  for_each                  = var.google_regions
+  source                    = "./cloud-run-service"
+  google_project            = var.google_project
+  environment               = var.environment
+  google_region             = each.key
+  client_token              = var.rpc_server_client_tokens[each.key]
+  latency_container_tag     = var.latency_container_tag
+  latency_start_at          = each.value.start_at
+  latency_interval_duration = length(keys(var.google_regions)) * 2
+  rpc_server_container_tag  = var.rpc_server_container_tag
+  service_account_email     = google_service_account.cloud_run.email
+  location_name             = each.value.name
+  location_latitude         = each.value.latitude
+  location_longitude        = each.value.longitude
+  depends_on                = [google_project_iam_binding.cloud_run]
+}

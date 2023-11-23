@@ -1,0 +1,3 @@
+{
+    "ansibleVault.keyfile": "./terraform/.vault_pass"
+}

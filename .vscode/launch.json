@@ -11,8 +11,12 @@
             "mode": "auto",
             "program": "main.go",
             "env": {
-                "LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_ADDRESS": "https://rpc-server-zero-hop.staging.rpch.tech/?provider=https://gnosis-provider.rpch.tech",
-                "LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS": "https://rpc-server-one-hop.staging.rpch.tech/?provider=https://gnosis-provider.rpch.tech"
+                "LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_ADDRESS": "http://localhost:45750/?provider=https://gnosis-provider.rpch.tech",
+                "LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS": "http://localhost:45750/?provider=https://gnosis-provider.rpch.tech",
+                "LATENCY_MONITOR_LOCATION_NAME": "Altea, Spain",
+                "LATENCY_MONITOR_LOCATION_REGION": "local-development",
+                "LATENCY_MONITOR_LOCATION_LATITUDE": "38.6028245",
+                "LATENCY_MONITOR_LOCATION_LONGITUDE": "-0.0472059"
             }
         }
     ]

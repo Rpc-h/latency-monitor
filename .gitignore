@@ -7,3 +7,6 @@ latency-monitor
 .envrc
 terraform/.terraform/
 terraform/.terraform.lock.hcl
+terraform/terraform-log-*.log
+terraform/tfplan-*
+terraform/.vault_pass

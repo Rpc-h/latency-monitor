@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,58 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
-
-var latenciesSuccess = promauto.NewSummary(prometheus.SummaryOpts{
-	Namespace: "rpch",
-	Subsystem: "latencies",
-	Name:      "success",
-	Help:      "Successfull latency of 1 hop in milliseconds",
-	Objectives: map[float64]float64{
-		0.5:  0,
-		0.7:  0,
-		0.9:  0,
-		0.99: 0,
-	},
-})
-
-var latenciesFailure = promauto.NewSummary(prometheus.SummaryOpts{
-	Namespace: "rpch",
-	Subsystem: "latencies",
-	Name:      "failure",
-	Help:      "Failure latency of 1 hop in milliseconds",
-	Objectives: map[float64]float64{
-		0.5:  0,
-		0.7:  0,
-		0.9:  0,
-		0.99: 0,
-	},
-})
-
-var latenciesSuccessZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
-	Namespace: "rpch",
-	Subsystem: "latencies",
-	Name:      "success_zerohop",
-	Help:      "Successfull latency of 0 hop in milliseconds",
-	Objectives: map[float64]float64{
-		0.5:  0,
-		0.7:  0,
-		0.9:  0,
-		0.99: 0,
-	},
-})
-
-var latenciesFailureZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
-	Namespace: "rpch",
-	Subsystem: "latencies",
-	Name:      "failure_zerohop",
-	Help:      "Failure latency of 0 hop in milliseconds",
-	Objectives: map[float64]float64{
-		0.5:  0,
-		0.7:  0,
-		0.9:  0,
-		0.99: 0,
-	},
-})
 
 func setup() error {
 	var err error
@@ -116,6 +65,26 @@ func setup() error {
 		err = errors.New("Environment variable \"LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_ADDRESS\" is not set ")
 	}
 
+	viper.BindEnv("LOCATION_LATITUDE")
+	if !viper.IsSet("LOCATION_LATITUDE") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_LOCATION_LATITUDE\" is not set ")
+	}
+
+	viper.BindEnv("LOCATION_LONGITUDE")
+	if !viper.IsSet("LOCATION_LONGITUDE") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_LOCATION_LONGITUDE\" is not set ")
+	}
+
+	viper.BindEnv("LOCATION_NAME")
+	if !viper.IsSet("LOCATION_NAME") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_LOCATION_NAME\" is not set ")
+	}
+
+	viper.BindEnv("LOCATION_REGION")
+	if !viper.IsSet("LOCATION_REGION") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_LOCATION_REGION\" is not set ")
+	}
+
 	return err
 }
 
@@ -127,8 +96,82 @@ func main() {
 		return
 	}
 
-	// started := time.Now().Unix()
-	// client := http.Client{}
+	var latenciesSuccess = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "success",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+		},
+		Help: "Successfull latency of 1 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
+	var latenciesFailure = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "failure",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+		},
+		Help: "Failure latency of 1 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
+	var latenciesSuccessZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "success_zerohop",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+		},
+		Help: "Successfull latency of 0 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
+	var latenciesFailureZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "failure_zerohop",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+		},
+		Help: "Failure latency of 0 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
 	log.Info().Msgf("Metrics listening on %s%s", viper.GetString("METRICS_ADDRESS"), viper.GetString("METRICS_PATH"))
 	go func() {
 		var interval = viper.GetInt32("REQUEST_INTERVAL_DURATION")
@@ -145,7 +188,6 @@ func main() {
 }
 
 func startLatencyMonitor(server string, interval int32, start_at int64, hops int, successMetric prometheus.Summary, failureMetric prometheus.Summary) {
-	client := http.Client{}
 	sleep_time := start_at + 60 - (time.Now().Unix() % 60)
 	//sleep_time = 0
 	log.Info().Msgf("Starting monitor for %d hops in %d seconds", hops, sleep_time)
@@ -155,23 +197,32 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops int
 
 	ticker := time.NewTicker(time.Second * time.Duration(interval))
 	for t := range ticker.C {
-		diff := t.Unix() - started.Unix()
-		latency, err := getRawLatency(&client, server, diff)
-		if err != nil {
-			log.Err(err).Send()
-			if latency != 0 {
+		go func() {
+			diff := t.Unix() - started.Unix()
+			latency, err := getRawLatency(server, diff)
+			if err != nil {
+				log.Err(err).Send()
+				if latency == 0 { // Assign largest response time
+					latency = 60
+					log.Warn().Msgf("Latency not reported, will set default failure latency to 60s")
+				}
+				log.Err(fmt.Errorf("Failed to send %d hop message in %v", hops, time.Duration(latency)*time.Millisecond))
 				failureMetric.Observe(float64(latency))
+			} else {
+				log.Debug().Msgf("Successfully send %d hop message in %v", hops, time.Duration(latency)*time.Millisecond)
+				successMetric.Observe(float64(latency))
 			}
-			return
-		}
-		log.Debug().Msgf("Successfully send %d hop message in %v", hops, time.Duration(latency)*time.Millisecond)
-		successMetric.Observe(float64(latency))
+		}()
 	}
+
 	ticker.Stop()
-	return
+	log.Err(fmt.Errorf("Latency monitor %d hop stopped working", hops))
+	os.Exit(3)
+
 }
 
-func getRawLatency(client *http.Client, server string, id int64) (int64, error) {
+func getRawLatency(server string, id int64) (int64, error) {
+	client := http.Client{Timeout: 60 * time.Second}
 	requestBody, err := json.Marshal(struct {
 		Jsonrpc string   `json:"jsonrpc"`
 		Method  string   `json:"method"`
@@ -210,7 +261,7 @@ func getRawLatency(client *http.Client, server string, id int64) (int64, error) 
 		}
 
 		return latency, fmt.Errorf("%s", b)
+	} else {
+		return latency, nil
 	}
-
-	return latency, nil
 }

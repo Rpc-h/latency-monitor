@@ -20,7 +20,8 @@ jobs:
         run: |
           git_commit=`git rev-parse --short HEAD`
           declare base_branch=${{ github.event.pull_request.base.ref }}
-          if [ "${base_branch}" == "master" ]; then
+          declare merged=${{ github.event.pull_request.merged }}
+          if [[ "${base_branch}" == "master" ]] && [[ "${merged}" == "true" ]]; then
             echo "docker_tags=latest,${git_commit}" >> $GITHUB_OUTPUT
           else
             echo "docker_tags=${git_commit}" >> $GITHUB_OUTPUT

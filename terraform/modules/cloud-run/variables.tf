@@ -3,18 +3,34 @@ variable "google_project" {
   description = "The ID of the GCP project"
 }
 
-variable "google_region" {
+variable "environment" {
   type        = string
+  description = "The name of the environment"
+}
+
+variable "google_regions" {
+  type = map(object({
+    name      = string
+    latitude  = number
+    longitude = number
+    start_at  = number
+  }))
   description = "The GCP region"
 }
 
-variable "container_image" {
-  description = "Container image name"
-  type        = string
-  default     = "europe-west6-docker.pkg.dev/rpch-375921/rpch/latency-monitor"
+variable "rpc_server_client_tokens" {
+  description = "The tokens for discovery platform used by rpc server"
+  type = map(string)
+  sensitive = true
 }
 
-variable "container_tag" {
+variable "latency_container_tag" {
+  description = "Container image tag"
+  type        = string
+  default     = "latest"
+}
+
+variable "rpc_server_container_tag" {
   description = "Container image tag"
   type        = string
   default     = "latest"
