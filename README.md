@@ -1,12 +1,12 @@
 # latency-monitor
 
-This is a monitoring tool for collecting latency metrics for RPCh. It works by opening a new socket on `${MONITOR_METRICS_ADDRESS}${MONITOR_METRICS_PATH}` for Prometheus to scrape metrics from. Then it makes calls to `${MONITOR_RPC_SERVER_ADDRESS}` every `${MONITOR_METRICS_REQUEST_INTERVAL}` seconds. The default logging level is `${MONITOR_LOG_LEVEL}` and can range from -1 (trace) up to 5 (panic), logging can be disabled with 7 (https://github.com/rs/zerolog#leveled-logging).
+This is a monitoring tool for collecting latency metrics for RPCh. It works by opening a new socket on `${LATENCY_MONITOR_METRICS_ADDRESS}${LATENCY_MONITOR_METRICS_PATH}` for Prometheus to scrape metrics from. Then it makes calls to `${MONITOR_RPC_SERVER_ADDRESS}` every `${MONITOR_METRICS_REQUEST_INTERVAL}` seconds. The default logging level is `${MONITOR_LATENCY_LATENCY_LOG_LEVEL}` and can range from -1 (trace) up to 5 (panic), logging can be disabled with 7 (https://github.com/rs/zerolog#leveled-logging).
 
 ## Running
 
 ### RPC server
 
-You have to provide address for RPC server in `${MONITOR_RPC_SERVER_ADDRESS}`. The easiest way to have a local RPC server is to follow the guide here: https://access.rpch.net/#section-2 , go to "RPCH DOCKER CONNECTOR", click on "Download", and then execute the `docker run` command provided.
+You have to provide address for RPC server in `${LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS}`. The easiest way to have a local RPC server is to follow the guide here: https://degen.rpch.net/ , go to "Get Started" for Degen, click on "Download", and then execute the `docker run` command provided.
 
 ### Latency monitor
 
@@ -21,11 +21,12 @@ go run main.go
 These are the accepted environment variables and their default values:
 
 ```dotenv
-MONITOR_RPC_SERVER_ADDRESS=http://localhost:8080/?exit-provider=https://primary.gnosis-chain.rpc.hoprtech.net
-MONITOR_METRICS_ADDRESS=0.0.0.0:1234
-MONITOR_METRICS_PATH=/metrics
-MONITOR_METRICS_REQUEST_INTERVAL=3
-MONITOR_LOG_LEVEL=1
+export LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_ADDRESS=http://localhost:45752/?provider=https://gnosis-provider.rpch.tech
+export LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS=http://localhost:45752/?provider=https://gnosis-provider.rpch.tech
+export LATENCY_MONITOR_METRICS_ADDRESS=0.0.0.0:80
+export LATENCY_MONITOR_METRICS_PATH=/metrics
+export LATENCY_MONITOR_REQUEST_INTERVAL_DURATION=3
+export LATENCY_MONITOR_LOG_LEVEL=1
 ```
 
 ## Metrics

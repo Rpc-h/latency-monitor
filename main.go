@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -16,84 +18,73 @@ import (
 	"github.com/spf13/viper"
 )
 
-var latenciesSuccess = promauto.NewSummary(prometheus.SummaryOpts{
-	Namespace: "rpch",
-	Subsystem: "latencies",
-	Name:      "success",
-	Objectives: map[float64]float64{
-		0.5:  0,
-		0.7:  0,
-		0.9:  0,
-		0.99: 0,
-	},
-})
-
-var latenciesFailure = promauto.NewSummary(prometheus.SummaryOpts{
-	Namespace: "rpch",
-	Subsystem: "latencies",
-	Name:      "failure",
-	Objectives: map[float64]float64{
-		0.5:  0,
-		0.7:  0,
-		0.9:  0,
-		0.99: 0,
-	},
-})
-
-var latenciesSuccessZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
-	Namespace: "rpch",
-	Subsystem: "latencies",
-	Name:      "success_zerohop",
-	Objectives: map[float64]float64{
-		0.5:  0,
-		0.7:  0,
-		0.9:  0,
-		0.99: 0,
-	},
-})
-
-var latenciesFailureZeroHop = promauto.NewSummary(prometheus.SummaryOpts{
-	Namespace: "rpch",
-	Subsystem: "latencies",
-	Name:      "failure_zerohop",
-	Objectives: map[float64]float64{
-		0.5:  0,
-		0.7:  0,
-		0.9:  0,
-		0.99: 0,
-	},
-})
-
 func setup() error {
 	var err error
-
-	viper.SetEnvPrefix("MONITOR")
+	viper.SetEnvPrefix("LATENCY_MONITOR")
 
 	err = viper.BindEnv("LOG_LEVEL")
 	if err != nil {
-		return err
+		viper.SetDefault("LOG_LEVEL", 0)
 	}
-
 	//Set time format and global log level
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	zerolog.SetGlobalLevel(zerolog.Level(viper.GetInt("LOG_LEVEL")))
+	zerolog.SetGlobalLevel(zerolog.Level(viper.GetInt("LATENCY_MONITOR_LOG_LEVEL")))
 
-	err = viper.BindEnv("RPC_SERVER_ADDRESS")
-	if err != nil {
-		return err
+	viper.BindEnv("METRICS_ADDRESS")
+	if !viper.IsSet("METRICS_ADDRESS") {
+		viper.Set("METRICS_ADDRESS", "0.0.0.0:80")
 	}
 
-	err = viper.BindEnv("RPC_SERVER_ADDRESS_ZERO_HOP")
-	if err != nil {
-		return err
+	viper.BindEnv("METRICS_PATH")
+	if !viper.IsSet("METRICS_PATH") {
+		viper.Set("METRICS_PATH", "/metrics")
 	}
 
-	err = viper.BindEnv("METRICS_ADDRESS")
-	if err != nil {
-		return err
+	viper.BindEnv("REQUEST_INTERVAL_DURATION")
+	if !viper.IsSet("REQUEST_INTERVAL_DURATION") {
+		viper.Set("REQUEST_INTERVAL_DURATION", 2)
 	}
 
-	err = viper.BindEnv("METRICS_PATH")
+	viper.BindEnv("RPC_SERVER_ONE_HOP_START")
+	if !viper.IsSet("RPC_SERVER_ONE_HOP_START") {
+		viper.Set("RPC_SERVER_ONE_HOP_START", 0)
+	}
+
+	viper.BindEnv("RPC_SERVER_ONE_HOP_ADDRESS")
+	if !viper.IsSet("RPC_SERVER_ONE_HOP_ADDRESS") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS\" is not set ")
+	}
+
+	viper.BindEnv("RPC_SERVER_ZERO_HOP_START")
+	if !viper.IsSet("RPC_SERVER_ZERO_HOP_START") {
+		viper.Set("RPC_SERVER_ZERO_HOP_START", 1)
+	}
+
+	viper.BindEnv("RPC_SERVER_ZERO_HOP_ADDRESS")
+	if !viper.IsSet("RPC_SERVER_ZERO_HOP_ADDRESS") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_ADDRESS\" is not set ")
+	}
+
+	viper.BindEnv("LOCATION_LATITUDE")
+	if !viper.IsSet("LOCATION_LATITUDE") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_LOCATION_LATITUDE\" is not set ")
+	}
+
+	viper.BindEnv("LOCATION_LONGITUDE")
+	if !viper.IsSet("LOCATION_LONGITUDE") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_LOCATION_LONGITUDE\" is not set ")
+	}
+
+	viper.BindEnv("LOCATION_NAME")
+	if !viper.IsSet("LOCATION_NAME") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_LOCATION_NAME\" is not set ")
+	}
+
+	viper.BindEnv("LOCATION_REGION")
+	if !viper.IsSet("LOCATION_REGION") {
+		err = errors.New("Environment variable \"LATENCY_MONITOR_LOCATION_REGION\" is not set ")
+	}
+
 	return err
 }
 
@@ -105,68 +96,111 @@ func main() {
 		return
 	}
 
-	started := time.Now().Unix()
-	client := http.Client{}
-
+	log.Info().Msgf("Metrics listening on %s%s", viper.GetString("METRICS_ADDRESS"), viper.GetString("METRICS_PATH"))
 	go func() {
-		ticker := time.NewTicker(time.Second * time.Duration(1))
-		for t := range ticker.C {
-			diff := t.Unix() - started
-			rem := diff % 2
-
-			// alternative rpc server calls every other second
-			if rem == 0 {
-
-				// run default rpc
-				go func() {
-					server := viper.GetString("RPC_SERVER_ADDRESS")
-					latency, err := getRawLatency(&client, server, diff)
-					if err != nil {
-						log.Err(err).Send()
-						if latency != 0 {
-							latenciesFailure.Observe(latency)
-						}
-						return
-					}
-
-					log.Debug().Msgf("Successful observation, latency: %v", latency)
-					latenciesSuccess.Observe(latency)
-				}()
-
-			} else {
-
-				// run zero hop rpc
-				go func() {
-					server := viper.GetString("RPC_SERVER_ADDRESS_ZERO_HOP")
-					latency, err := getRawLatency(&client, server, diff)
-					if err != nil {
-						log.Err(err).Send()
-						if latency != 0 {
-							latenciesFailureZeroHop.Observe(latency)
-						}
-						return
-					}
-
-					log.Debug().Msgf("Successful observation, latency: %v", latency)
-					latenciesSuccessZeroHop.Observe(latency)
-				}()
-
-			}
-		}
-		ticker.Stop()
+		var interval = viper.GetInt32("REQUEST_INTERVAL_DURATION")
+		go startLatencyMonitor(viper.GetString("RPC_SERVER_ZERO_HOP_ADDRESS"), interval, viper.GetInt64("RPC_SERVER_ZERO_HOP_START"), "0")
+		go startLatencyMonitor(viper.GetString("RPC_SERVER_ONE_HOP_ADDRESS"), interval, viper.GetInt64("RPC_SERVER_ONE_HOP_START"), "1")
 	}()
 
 	http.Handle(viper.GetString("METRICS_PATH"), promhttp.Handler())
-
-	log.Info().Msgf("Webserver listening on %s", viper.GetString("METRICS_ADDRESS"))
-
 	err = http.ListenAndServe(viper.GetString("METRICS_ADDRESS"), nil)
 	if err != nil {
 		log.Fatal().Err(err).Send()
 	}
+
 }
 
-func getRawLatency(client *http.Client, server string, id int64) (float64, error) {
+func startLatencyMonitor(server string, interval int32, start_at int64, hops string) {
+	var successMetric = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "success",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+			"hops":      hops,
+		},
+		Help: "Successfull latency of 1 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
+	var failureMetric = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "failure",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+			"hops":      hops,
+		},
+		Help: "Failure latency of 1 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
+	var errorMetric = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "error",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+			"hops":      hops,
+		},
+		Help: "Error latency of 1 hop in milliseconds",
+	})
+
+	sleep_time := start_at + 60 - (time.Now().Unix() % 60)
+	log.Info().Msgf("Starting monitor for %s hops in %d seconds", hops, sleep_time)
+	time.Sleep(time.Duration(sleep_time) * time.Second)
+	started := time.Now()
+	log.Info().Msgf("Started at: %s", started)
+
+	ticker := time.NewTicker(time.Second * time.Duration(interval))
+	for t := range ticker.C {
+		go func() {
+			diff := t.Unix() - started.Unix()
+			latency, err := getRawLatency(server, diff)
+			if err != nil {
+				log.Err(err).Send()
+				if latency == 0 { // Assign largest response time
+					log.Warn().Msgf("Latency not reported, a major error exist with rpc-server")
+					errorMetric.Add(float64(latency))
+				} else {
+					log.Err(fmt.Errorf("Failed to send %s hop message in %v", hops, time.Duration(latency)*time.Millisecond))
+					failureMetric.Observe(float64(latency))
+				}
+			} else {
+				log.Debug().Msgf("Successfully send %s hop message in %v", hops, time.Duration(latency)*time.Millisecond)
+				successMetric.Observe(float64(latency))
+			}
+		}()
+	}
+
+	ticker.Stop()
+	log.Err(fmt.Errorf("Latency monitor %s hop stopped working", hops))
+	os.Exit(3)
+
+}
+
+func getRawLatency(server string, id int64) (int64, error) {
+	client := http.Client{Timeout: 60 * time.Second}
 	requestBody, err := json.Marshal(struct {
 		Jsonrpc string   `json:"jsonrpc"`
 		Method  string   `json:"method"`
@@ -197,8 +231,7 @@ func getRawLatency(client *http.Client, server string, id int64) (float64, error
 	}
 	defer response.Body.Close()
 
-	latency := time.Since(now).Seconds()
-
+	latency := time.Since(now).Milliseconds()
 	if response.StatusCode != 200 {
 		b, err := io.ReadAll(response.Body)
 		if err != nil {
@@ -206,7 +239,7 @@ func getRawLatency(client *http.Client, server string, id int64) (float64, error
 		}
 
 		return latency, fmt.Errorf("%s", b)
+	} else {
+		return latency, nil
 	}
-
-	return latency, nil
 }

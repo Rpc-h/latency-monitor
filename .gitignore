@@ -3,3 +3,9 @@ main
 latency-monitor
 .env
 .direnv
+*service-account.json
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform-log-*.log
+terraform/tfplan-*
+terraform/.vault_pass
