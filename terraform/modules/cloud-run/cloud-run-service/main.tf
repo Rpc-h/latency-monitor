@@ -179,7 +179,7 @@ resource "google_cloud_run_service" "latency_monitor" {
         }
         env {
           name  = "DISCOVERY_PLATFORM_API_ENDPOINT"
-          value = "https://discovery.staging.rpch.tech"
+          value = "https://discovery.${var.environment}.rpch.tech"
         }
         env {
           name = "CLIENT"
