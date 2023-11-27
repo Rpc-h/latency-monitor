@@ -182,10 +182,6 @@ resource "google_cloud_run_service" "latency_monitor" {
           value = "https://discovery.staging.rpch.tech"
         }
         env {
-          name  = "FORCE_ZERO_HOP"
-          value = "false"
-        }
-        env {
           name = "CLIENT"
           value = var.client_token
         }

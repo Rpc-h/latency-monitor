@@ -7,12 +7,6 @@ google_regions = {
     longitude = -0.1277653
     start_at  = 0
   }
-  "europe-west3" = {
-    name      = "Frankfurt, Germany"
-    latitude  = 50.1106444
-    longitude = 8.6820917
-    start_at  = 2
-  }
   "europe-west6" = {
     name      = "Zurich, Switzerland"
     latitude  = 47.3668389
