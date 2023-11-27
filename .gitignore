@@ -4,7 +4,6 @@ latency-monitor
 .env
 .direnv
 *service-account.json
-.envrc
 terraform/.terraform/
 terraform/.terraform.lock.hcl
 terraform/terraform-log-*.log

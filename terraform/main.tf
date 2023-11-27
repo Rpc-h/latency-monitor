@@ -8,7 +8,7 @@ module "cloud-run" {
   google_regions           = var.google_regions
   rpc_server_client_tokens = var.rpc_server_client_tokens
   environment              = var.environment
-  latency_container_tag    = "1d033450ff611e61f63ea655e595105f046a1067715a27562ef9090739991ddc"
-  rpc_server_container_tag = "9876d4d300e31a33ee5ef094c0f97eb489f6a034a2f5040361264ab25abb7f1b"
+  latency_container_tag    = "004d54b64b5e06116088bd08bf382875da06fab3632ed2d3b58686e80781fd40"
+  rpc_server_container_tag = "30e2f62fc6f9ce171e267fee6eeb4f8643946608d34f7c59747eb49f191fc44b"
   depends_on               = [google_project_service.run]
 }
