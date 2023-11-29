@@ -14,6 +14,7 @@ with pkgs;
 mkShell {
   nativeBuildInputs = [
     go
+    terraform
 
     # custom pkg groups
     linuxPkgs
