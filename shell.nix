@@ -13,6 +13,7 @@ in
 with pkgs;
 mkShell {
   nativeBuildInputs = [
+    ansible
     go
     terraform
 
