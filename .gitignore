@@ -1,7 +1,6 @@
 tmp
 main
 latency-monitor
-.env
 .direnv
 *service-account.json
 terraform/.terraform/

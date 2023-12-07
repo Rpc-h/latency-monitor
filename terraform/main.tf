@@ -9,6 +9,6 @@ module "cloud-run" {
   rpc_server_client_tokens = var.rpc_server_client_tokens
   environment              = var.environment
   latency_container_tag    = "004d54b64b5e06116088bd08bf382875da06fab3632ed2d3b58686e80781fd40"
-  rpc_server_container_tag = "30e2f62fc6f9ce171e267fee6eeb4f8643946608d34f7c59747eb49f191fc44b"
+  rpc_server_container_tag = "0.13.1"
   depends_on               = [google_project_service.run]
 }

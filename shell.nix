@@ -13,7 +13,9 @@ in
 with pkgs;
 mkShell {
   nativeBuildInputs = [
+    ansible
     go
+    terraform
 
     # custom pkg groups
     linuxPkgs
