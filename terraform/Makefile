@@ -25,17 +25,17 @@ ifeq (,$(wildcard ./.vault_pass))
 else
 	ansible-vault decrypt --vault-password-file .vault_pass ./terraform-secret-$(env).tfvars
 endif
-	
+
 
 init: ensure-env-variable-is-set
 init: ## Initialize backend
-	terraform init -backend-config="bucket=terraform-latency-monitor-$(env)" | $(tee_log)
+	terraform init -backend-config="bucket=terraform-latency-monitor-$(env)" -reconfigure | $(tee_log)
 
 is_encrypted := $(shell grep -q ANSIBLE_VAULT terraform-secret-$(env).tfvars && echo "YES" || echo "NO")
 plan: ensure-env-variable-is-set
 plan: ## Plan changes
 ifeq ($(is_encrypted),NO)
-	terraform plan -out=tfplan-$(env) -var-file=terraform-$(env).tfvars -var-file=terraform-secret-$(env).tfvars | $(tee_log) 
+	terraform plan -out=tfplan-$(env) -var-file=terraform-$(env).tfvars -var-file=terraform-secret-$(env).tfvars | $(tee_log)
 else
 	echo "[ERROR] Secret values file './terraform-secret-$(env).tfvars' are not decrypted. Execute first 'make decrypt env=$(env)'";
 	exit 1
