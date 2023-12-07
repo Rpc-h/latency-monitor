@@ -33,7 +33,6 @@ variable "latency_container_tag" {
 variable "rpc_server_container_tag" {
   description = "Container image tag"
   type        = string
-  default     = "latest"
 }
 
 variable "rpc_server_one_hop_address" {
