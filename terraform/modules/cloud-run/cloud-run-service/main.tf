@@ -178,6 +178,10 @@ resource "google_cloud_run_service" "latency_monitor" {
           value = "60000"
         }
         env {
+          name  = "FORCE_MANUAL_RELAYING"
+          value = "true"
+        }
+        env {
           name  = "DISCOVERY_PLATFORM_API_ENDPOINT"
           value = "https://discovery.${var.environment}.rpch.tech"
         }
