@@ -18,3 +18,4 @@ google_regions = {
 }
 
 environment = "staging"
+rpc_server_container_tag = "1.0.0"

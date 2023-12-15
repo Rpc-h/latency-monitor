@@ -25,3 +25,8 @@ variable "environment" {
   type        = string
   description = "The name of the environment"
 }
+
+variable "rpc_server_container_tag" {
+  type        = string
+  description = "RPC Server container tag"
+}
