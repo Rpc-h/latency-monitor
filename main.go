@@ -174,8 +174,8 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 
 	ticker := time.NewTicker(time.Second * time.Duration(interval))
 	for t := range ticker.C {
-		go func() {
-			diff := t.Unix() - started.Unix()
+		go func(tCopy time.Time) {
+			diff := tCopy.Unix() - started.Unix()
 			latency, err := getRawLatency(server, diff)
 			if err != nil {
 				log.Err(err).Send()
@@ -190,7 +190,7 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 				log.Debug().Msgf("Successfully send %s hop message in %v", hops, time.Duration(latency)*time.Millisecond)
 				successMetric.Observe(float64(latency))
 			}
-		}()
+		}(t)
 	}
 
 	ticker.Stop()
