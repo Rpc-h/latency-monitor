@@ -18,6 +18,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+type Latencies struct {
+	Segments int `json:"segDur"`
+	RpcCall  int `json:"rpcDur"`
+	ExitNode int `json:"exitNodeDur"`
+	Hopr     int `json:"hoprDur"`
+}
+
+type ResponseBody struct {
+	Lats Latencies `json:"stats"`
+}
+
 func setup() error {
 	var err error
 	viper.SetEnvPrefix("LATENCY_MONITOR")
@@ -132,6 +143,46 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 		},
 	})
 
+	var rpcMetric = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "rpcCall",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+			"hops":      hops,
+		},
+		Help: "RPC call latency of 1 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
+	var hoprMetric = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "hoprnet",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+			"hops":      hops,
+		},
+		Help: "Approximated hopr network latency of 1 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
 	var failureMetric = promauto.NewSummary(prometheus.SummaryOpts{
 		Namespace: "rpch",
 		Subsystem: "latencies",
@@ -174,9 +225,9 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 
 	ticker := time.NewTicker(time.Second * time.Duration(interval))
 	for t := range ticker.C {
-		go func() {
-			diff := t.Unix() - started.Unix()
-			latency, err := getRawLatency(server, diff)
+		go func(tCopy time.Time) {
+			diff := tCopy.Unix() - started.Unix()
+			latency, lats, err := getRawLatency(server, diff)
 			if err != nil {
 				log.Err(err).Send()
 				if latency == 0 { // Assign largest response time
@@ -187,10 +238,12 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 					failureMetric.Observe(float64(latency))
 				}
 			} else {
-				log.Debug().Msgf("Successfully send %s hop message in %v", hops, time.Duration(latency)*time.Millisecond)
+                log.Debug().Msgf("Successfully send %s hop message in %v (rpc: %d, hopr: %d)", hops, time.Duration(latency)*time.Millisecond, lats.RpcCall, lats.Hopr)
 				successMetric.Observe(float64(latency))
+				rpcMetric.Observe(float64(lats.RpcCall))
+				hoprMetric.Observe(float64(lats.Hopr))
 			}
-		}()
+		}(t)
 	}
 
 	ticker.Stop()
@@ -199,7 +252,7 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 
 }
 
-func getRawLatency(server string, id int64) (int64, error) {
+func getRawLatency(server string, id int64) (int64, *Latencies, error) {
 	client := http.Client{Timeout: 60 * time.Second}
 	requestBody, err := json.Marshal(struct {
 		Jsonrpc string   `json:"jsonrpc"`
@@ -215,31 +268,36 @@ func getRawLatency(server string, id int64) (int64, error) {
 		Id: fmt.Sprintf("%v", id),
 	})
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	request, err := http.NewRequest(http.MethodPost, server, bytes.NewBuffer(requestBody))
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	now := time.Now()
 
 	response, err := client.Do(request)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	defer response.Body.Close()
 
 	latency := time.Since(now).Milliseconds()
-	if response.StatusCode != 200 {
-		b, err := io.ReadAll(response.Body)
-		if err != nil {
-			return 0, err
-		}
-
-		return latency, fmt.Errorf("%s", b)
-	} else {
-		return latency, nil
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return 0, nil, err
 	}
+
+	if response.StatusCode != 200 {
+		return latency, nil, fmt.Errorf("%s", body)
+	}
+
+	var payload ResponseBody
+	err = json.Unmarshal(body, &payload)
+	if err != nil {
+		return 0, nil, err
+	}
+	return latency, &payload.Lats, nil
 }
