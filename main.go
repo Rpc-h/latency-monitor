@@ -18,6 +18,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+type Latencies struct {
+	Segments int `json:"segDur"`
+	RpcCall  int `json:"rpcDur"`
+	ExitNode int `json:"exitNodeDur"`
+	Hopr     int `json:"hoprDur"`
+}
+
+type ResponseBody struct {
+    Lats Latencies `json:"stats"`
+}
+
 func setup() error {
 	var err error
 	viper.SetEnvPrefix("LATENCY_MONITOR")
@@ -176,7 +187,8 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 	for t := range ticker.C {
 		go func(tCopy time.Time) {
 			diff := tCopy.Unix() - started.Unix()
-			latency, err := getRawLatency(server, diff)
+			latency, lats, err := getRawLatency(server, diff)
+			fmt.Println("lats", lats);
 			if err != nil {
 				log.Err(err).Send()
 				if latency == 0 { // Assign largest response time
@@ -199,7 +211,7 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 
 }
 
-func getRawLatency(server string, id int64) (int64, error) {
+func getRawLatency(server string, id int64) (int64, *Latencies, error) {
 	client := http.Client{Timeout: 60 * time.Second}
 	requestBody, err := json.Marshal(struct {
 		Jsonrpc string   `json:"jsonrpc"`
@@ -215,31 +227,36 @@ func getRawLatency(server string, id int64) (int64, error) {
 		Id: fmt.Sprintf("%v", id),
 	})
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	request, err := http.NewRequest(http.MethodPost, server, bytes.NewBuffer(requestBody))
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	now := time.Now()
 
 	response, err := client.Do(request)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
-	defer response.Body.Close()
 
 	latency := time.Since(now).Milliseconds()
-	if response.StatusCode != 200 {
-		b, err := io.ReadAll(response.Body)
-		if err != nil {
-			return 0, err
-		}
-
-		return latency, fmt.Errorf("%s", b)
-	} else {
-		return latency, nil
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return 0, nil, err
 	}
+
+	if response.StatusCode != 200 {
+		return latency, nil, fmt.Errorf("%s", body)
+	}
+
+    var payload ResponseBody
+	err = json.Unmarshal(body, &payload)
+	if err != nil {
+		return 0, nil, err
+	}
+	return latency, &payload.Lats, nil
 }
