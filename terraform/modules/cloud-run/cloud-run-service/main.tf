@@ -121,6 +121,10 @@ resource "google_cloud_run_service" "latency_monitor" {
           value = "60000"
         }
         env {
+          name = "RPCH_EXPOSE_LATENCY_STATS"
+          value = "true"
+        }
+        env {
           name  = "DISCOVERY_PLATFORM_API_ENDPOINT"
           value = "https://discovery.${var.environment}.rpch.tech"
         }
@@ -178,12 +182,16 @@ resource "google_cloud_run_service" "latency_monitor" {
           value = "60000"
         }
         env {
-          name  = "FORCE_MANUAL_RELAYING"
+          name = "RPCH_EXPOSE_LATENCY_STATS"
           value = "true"
         }
         env {
           name  = "DISCOVERY_PLATFORM_API_ENDPOINT"
           value = "https://discovery.${var.environment}.rpch.tech"
+        }
+        env {
+          name  = "FORCE_MANUAL_RELAYING"
+          value = "true"
         }
         env {
           name = "CLIENT"
