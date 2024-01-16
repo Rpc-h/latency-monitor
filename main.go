@@ -26,7 +26,7 @@ type Latencies struct {
 }
 
 type ResponseBody struct {
-    Lats Latencies `json:"stats"`
+	Lats Latencies `json:"stats"`
 }
 
 func setup() error {
@@ -143,6 +143,46 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 		},
 	})
 
+	var rpcMetric = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "rpcCall",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+			"hops":      hops,
+		},
+		Help: "RPC call latency of 1 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
+	var hoprMetric = promauto.NewSummary(prometheus.SummaryOpts{
+		Namespace: "rpch",
+		Subsystem: "latencies",
+		Name:      "hoprnet",
+		ConstLabels: map[string]string{
+			"location":  viper.GetString("LOCATION_NAME"),
+			"region":    viper.GetString("LOCATION_REGION"),
+			"latitude":  viper.GetString("LOCATION_LATITUDE"),
+			"longitude": viper.GetString("LOCATION_LONGITUDE"),
+			"hops":      hops,
+		},
+		Help: "Approximated hopr network latency of 1 hop in milliseconds",
+		Objectives: map[float64]float64{
+			0.5:  0,
+			0.7:  0,
+			0.9:  0,
+			0.99: 0,
+		},
+	})
+
 	var failureMetric = promauto.NewSummary(prometheus.SummaryOpts{
 		Namespace: "rpch",
 		Subsystem: "latencies",
@@ -188,7 +228,6 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 		go func(tCopy time.Time) {
 			diff := tCopy.Unix() - started.Unix()
 			latency, lats, err := getRawLatency(server, diff)
-			fmt.Println("lats", lats);
 			if err != nil {
 				log.Err(err).Send()
 				if latency == 0 { // Assign largest response time
@@ -199,8 +238,10 @@ func startLatencyMonitor(server string, interval int32, start_at int64, hops str
 					failureMetric.Observe(float64(latency))
 				}
 			} else {
-				log.Debug().Msgf("Successfully send %s hop message in %v", hops, time.Duration(latency)*time.Millisecond)
+                log.Debug().Msgf("Successfully send %s hop message in %v (rpc: %d, hopr: %d)", hops, time.Duration(latency)*time.Millisecond, lats.RpcCall, lats.Hopr)
 				successMetric.Observe(float64(latency))
+				rpcMetric.Observe(float64(lats.RpcCall))
+				hoprMetric.Observe(float64(lats.Hopr))
 			}
 		}(t)
 	}
@@ -241,9 +282,9 @@ func getRawLatency(server string, id int64) (int64, *Latencies, error) {
 	if err != nil {
 		return 0, nil, err
 	}
+	defer response.Body.Close()
 
 	latency := time.Since(now).Milliseconds()
-	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return 0, nil, err
@@ -253,7 +294,7 @@ func getRawLatency(server string, id int64) (int64, *Latencies, error) {
 		return latency, nil, fmt.Errorf("%s", body)
 	}
 
-    var payload ResponseBody
+	var payload ResponseBody
 	err = json.Unmarshal(body, &payload)
 	if err != nil {
 		return 0, nil, err
