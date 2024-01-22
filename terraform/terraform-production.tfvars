@@ -47,4 +47,4 @@ google_regions = {
 }
 
 environment = "production"
-rpc_server_container_tag = "1.1.3"
+rpc_server_container_tag = "1.2.0"
