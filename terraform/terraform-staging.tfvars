@@ -7,6 +7,7 @@ google_regions = {
     latitude  = 47.3668389
     longitude = 8.5339821
     start_at  = 4
+    interval_duration = 30
   }
 
   "us-central1" = {
@@ -14,6 +15,7 @@ google_regions = {
     latitude  = 41.258841
     longitude = -95.8519484
     start_at  = 6
+    interval_duration = 30
   }
 }
 

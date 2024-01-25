@@ -21,7 +21,7 @@ module "cloud-run-service" {
   client_token              = var.rpc_server_client_tokens[each.key]
   latency_container_tag     = var.latency_container_tag
   latency_start_at          = each.value.start_at
-  latency_interval_duration = length(keys(var.google_regions)) * 2
+  latency_interval_duration = each.value.interval_duration
   rpc_server_container_tag  = var.rpc_server_container_tag
   service_account_email     = google_service_account.cloud_run.email
   location_name             = each.value.name

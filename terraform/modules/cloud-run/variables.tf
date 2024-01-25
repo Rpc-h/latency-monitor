@@ -14,6 +14,7 @@ variable "google_regions" {
     latitude  = number
     longitude = number
     start_at  = number
+    interval_duration = number
   }))
   description = "The GCP region"
 }
