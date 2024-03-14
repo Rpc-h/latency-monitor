@@ -34,7 +34,7 @@ resource "google_cloud_run_service" "latency_monitor" {
         }
         env {
           name  = "LATENCY_MONITOR_RPC_SERVER_ONE_HOP_ADDRESS"
-          value = "http://localhost:8081/?provider=https://primary.gnosis-chain.rpc.hoprtech.net/"
+          value = "http://localhost:8081/?provider=https://gnosis-chain.rpc.rank1.co/"
         }
         env {
           name  = "LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_START"
@@ -42,7 +42,7 @@ resource "google_cloud_run_service" "latency_monitor" {
         }
         env {
           name  = "LATENCY_MONITOR_RPC_SERVER_ZERO_HOP_ADDRESS"
-          value = "http://localhost:8080/?provider=https://primary.gnosis-chain.rpc.hoprtech.net/"
+          value = "http://localhost:8080/?provider=https://gnosis-chain.rpc.rank1.co/"
         }
         env {
           name  = "LATENCY_MONITOR_RPC_SERVER_ONE_HOP_START"
